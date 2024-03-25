@@ -1,0 +1,77 @@
+import connectDB from "@/config/dbConfig";
+import Message from "@/models/Messages";
+import { getSessionUser } from "@/utils/getSessionUser";
+
+export const dynamic = "force-dynamic";
+
+// PUT /api/messages/:id
+export const PUT = async (request, { params }) => {
+  try {
+    await connectDB();
+    const { id } = params;
+
+    // Check user
+    const session = await getSessionUser();
+
+    if (!session || !session.user) {
+      return new Response("User id is required", { status: 401 });
+    }
+
+    const { userId } = session;
+    // check message
+    const message = await Message.findById(id);
+
+    if (!message) {
+      return new Response("Message not found", { status: 404 });
+    }
+
+    // verify owenership
+    if (message.recipient.toString() !== userId) {
+      return new Response("Unauthrized", { status: 401 });
+    }
+
+    // update message to read/unread according to current status
+    message.read = !message.read;
+    await message.save();
+
+    return new Response(JSON.stringify(message), { status: 200 });
+  } catch (error) {
+    console.log(error);
+    return new Response("Something went wrong", { status: 500 });
+  }
+};
+
+// DELETE /api/messages/:id
+export const DELETE = async (request, { params }) => {
+  try {
+    await connectDB();
+    const { id } = params;
+
+    // Check user
+    const session = await getSessionUser();
+
+    if (!session || !session.user) {
+      return new Response("User id is required", { status: 401 });
+    }
+
+    const { userId } = session;
+    // check message
+    const message = await Message.findById(id);
+
+    if (!message) {
+      return new Response("Message not found", { status: 404 });
+    }
+
+    // verify owenership
+    if (message.recipient.toString() !== userId) {
+      return new Response("Unauthrized", { status: 401 });
+    }
+
+    await message.deleteOne();
+
+    return new Response("Message Deleted", { status: 200 });
+  } catch (error) {
+    console.log(error);
+    return new Response("Something went wrong", { status: 500 });
+  }
+};
